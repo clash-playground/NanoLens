@@ -51,6 +51,11 @@ import Language.Haskell.TH.Lib
 --
 type Lens s t a b = forall f. Functor f => (a -> f b) -> s -> f t
 
+-- | Build a lens from convex and concave parts.
+--
+lens :: (s -> a) -> (s -> b -> t) -> Lens s t a b
+lens convex concave k s = k (convex s) <&> concave s
+
 -- | Convex lenses can /focus in/ on a field of a record.
 --
 type Convex r s a = (a -> Const r a) -> s -> Const r s
