@@ -2,6 +2,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module NanoLens.Lens where
 
@@ -11,6 +12,10 @@ import Data.Functor
 import Data.Functor.Identity
 import Data.Functor.Const
 import Data.Function
+
+import Language.Haskell.TH
+import Language.Haskell.TH.Syntax
+import Language.Haskell.TH.Lib
 
 
 
@@ -63,3 +68,31 @@ over = coerce
 
 set :: Concave s t a b -> b -> s -> t
 set l b = runIdentity #. l (\_ -> Identity b)
+
+
+-- | Automatically generate a lens for a numbered field in a record.
+--
+genNumberedLens :: Name -> Con -> Int -> Q Dec
+genNumberedLens lensName con nr = do
+    let (conName, fields) = case con of
+            RecC nm fs -> (nm, fs)
+        fieldNames = map (\(nm, _, _) -> nm) fields
+        fieldName  = fieldNames !! nr
+
+    kName   <- newName "k"
+    xName   <- newName "x"
+    yName   <- newName "y"
+    recName <- newName "rec"
+    let kP = varP kName
+        fieldP = [ if nr == n then varP xName else wildP
+                 | (n, _) <- zip [0..] fields ]
+        recP = asP recName (conP conName fieldP)
+        argsP = [ kP, recP ]
+
+    let upd1 = (fieldName,) <$> varE yName
+        upd  = recUpdE (varE recName) [upd1]
+        body = [| $k $xName <&> \$yName -> $upd |]
+
+    lensDec <- funD lensName [clause argsP (normalB body) []]
+    return lensDec
+
