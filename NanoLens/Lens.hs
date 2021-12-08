@@ -33,21 +33,21 @@ import Language.Haskell.TH.Lib
 -- | Minimal implementation of lenses for convenient field access.
 --
 -- Typical lenses should look something like:
--- >>> lens :: Functor f => (a -> f b) -> s -> f t
--- >>> lens k (S x) = k x <&> \y -> T y
+--  >>> lens :: Functor f => (a -> f b) -> s -> f t
+--  >>> lens k (S x) = k x <&> \y -> T y
 --
 -- Given this definition, observe that
--- >>> lens Const (S x)
--- >>>   == Const x <&> \y -> T y
--- >>>   == Const x
---          (from @Const v <&> f == Const v@)
+--  >>> lens Const (S x)
+--  >>>   == Const x <&> \y -> T y
+--  >>>   == Const x
+-- from @Const v <&> f == Const v@.
 --
 -- Also observe that
--- >>> lens (\_ -> Identity v) (S x)
--- >>>   == (\_ -> Identity v) x <&> \y -> T y
--- >>>   == Identity v <&> \y -> T y
--- >>>   == Identity (T v)
---          (from @Identity v <&> f == Identity (f v)@)
+--  >>> lens (\_ -> Identity v) (S x)
+--  >>>   == (\_ -> Identity v) x <&> \y -> T y
+--  >>>   == Identity v <&> \y -> T y
+--  >>>   == Identity (T v)
+-- from @Identity v <&> f == Identity (f v)@.
 --
 type Lens s t a b = forall f. Functor f => (a -> f b) -> s -> f t
 
