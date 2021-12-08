@@ -55,7 +55,7 @@ type Lens s t a b = forall f. Functor f => (a -> f b) -> s -> f t
 --
 type Convex r s a = (a -> Const r a) -> s -> Const r s
 
-view :: Convex a s a -> a
+view :: Convex a s a -> s -> a
 view l = getConst #. l Const
 
 -- | Concave lenses let the values of a field diverge with changes in
@@ -89,9 +89,13 @@ genNumberedLens lensName con nr = do
         recP = asP recName (conP conName fieldP)
         argsP = [ kP, recP ]
 
-    let upd1 = (fieldName,) <$> varE yName
+    let k = varE kName
+        x = varE xName
+        y = varP yName
+
+        upd1 = (,) fieldName <$> varE yName
         upd  = recUpdE (varE recName) [upd1]
-        body = [| $k $xName <&> \$yName -> $upd |]
+        body = [| $k $x <&> \ $y -> $upd |]
 
     lensDec <- funD lensName [clause argsP (normalB body) []]
     return lensDec
