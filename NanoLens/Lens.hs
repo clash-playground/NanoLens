@@ -30,7 +30,7 @@ import Language.Haskell.TH.Lib
 (.#) :: Coercible c b => (a -> b) -> (b -> c) -> (a -> c)
 (.#) p _ = coerce p
 
--- | Minimal implementation of lenses for convenient field access.
+-- | Nano-implementation of lenses for convenient field access.
 --
 -- Typical lenses should look something like:
 --  >>> lens :: Functor f => (a -> f b) -> s -> f t
