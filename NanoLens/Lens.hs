@@ -19,18 +19,7 @@ import Language.Haskell.TH.Lib
 
 
 
--- | Compose with a coercion.
---
-(#.) :: Coercible c b => (b -> c) -> (a -> b) -> (a -> c)
-(#.) _ =
-    coerce (\x -> x :: g) :: forall f g. Coercible g f => f -> g
-    -- ^ Given that @Coercible c b@ implies @Coercible (a -> c) (a -> b)@,
-    -- @(#.) q p@ becomes just a coercion on @id p@.
-
-(.#) :: Coercible c b => (a -> b) -> (b -> c) -> (a -> c)
-(.#) p _ = coerce p
-
--- | Nano-implementation of lenses for convenient field access.
+-- | Nano-implementation of lenses.
 --
 -- Typical lenses should look something like:
 --  >>> lens :: Functor f => (a -> f b) -> s -> f t
@@ -51,7 +40,8 @@ import Language.Haskell.TH.Lib
 --
 type Lens s t a b = forall f. Functor f => (a -> f b) -> s -> f t
 
--- | Build a lens from convex and concave parts.
+-- | Implement the standard lens explained in 'Lens' from convex
+-- and concave parts.
 --
 lens :: (s -> a) -> (s -> b -> t) -> Lens s t a b
 lens convex concave k s = k (convex s) <&> concave s
@@ -68,11 +58,31 @@ view l = getConst #. l Const
 --
 type Concave s t a b = (a -> Identity b) -> s -> Identity t
 
+-- | Apply a function under a lens.
+-- 
+-- Note that @a -> b ~ a -> Identity b@, so
+--  >>> lens (coerce f) (S x)
+--  >>>   == (Identity . f) x <&> \y -> T y
+--  >>>   == Identity (f x) <&> \y -> T y
+--  >>>   == Identity (T $ f x)
+--  
 over :: Concave s t a b -> (a -> b) -> s -> t
 over = coerce
 
 set :: Concave s t a b -> b -> s -> t
 set l b = runIdentity #. l (\_ -> Identity b)
+
+
+-- | Compose with a coercion.
+--
+(#.) :: Coercible c b => (b -> c) -> (a -> b) -> (a -> c)
+(#.) _ =
+    coerce (\x -> x :: g) :: forall f g. Coercible g f => f -> g
+    -- ^ Given that @Coercible c b@ implies @Coercible (a -> c) (a -> b)@,
+    -- @(#.) q p@ becomes just a coercion on @id p@.
+
+(.#) :: Coercible c b => (a -> b) -> (b -> c) -> (a -> c)
+(.#) p _ = coerce p
 
 
 -- | Automatically generate a lens for a numbered field in a record.
