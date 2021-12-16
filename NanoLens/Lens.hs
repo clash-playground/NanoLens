@@ -94,24 +94,29 @@ genNumberedLens lensName con nr = do
         fieldNames = map (\(nm, _, _) -> nm) fields
         fieldName  = fieldNames !! nr
 
-    kName   <- newName "k"
-    xName   <- newName "x"
-    yName   <- newName "y"
-    recName <- newName "rec"
+    kName <- newName "k"
+    sName <- newName "s"
+    xName <- newName "x"
+    yName <- newName "y"
     let kP = varP kName
+        sP = varP sName
+        sE = varE sName
+
+        argsP = [ kP, sP ]
+
         fieldP = [ if nr == n then varP xName else wildP
                  | (n, _) <- zip [0..] fields ]
-        recP = asP recName (conP conName fieldP)
-        argsP = [ kP, recP ]
+        recP = conP conName fieldP
+        recD = valD recP (normalB sE) []
 
     let k = varE kName
         x = varE xName
         y = varP yName
 
         upd1 = (,) fieldName <$> varE yName
-        upd  = recUpdE (varE recName) [upd1]
+        upd  = recUpdE sE [upd1]
         body = [| $k $x <&> \ $y -> $upd |]
 
-    lensDec <- funD lensName [clause argsP (normalB body) []]
+    lensDec <- funD lensName [clause argsP (normalB body) [recD]]
     return lensDec
 
