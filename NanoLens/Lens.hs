@@ -7,11 +7,15 @@
 module NanoLens.Lens where
 
 import Control.Applicative
+import Control.Monad
 import Data.Coerce
+import Data.Eq
 import Data.Functor
 import Data.Functor.Identity
 import Data.Functor.Const
 import Data.Function
+import Data.List
+import GHC.Int
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
@@ -117,6 +121,7 @@ genNumberedLens lensName con nr = do
         upd  = recUpdE sE [upd1]
         body = [| $k $x <&> \ $y -> $upd |]
 
-    lensDec <- funD lensName [clause argsP (normalB body) [recD]]
+    lensDec <- funD lensName
+        [ clause argsP (normalB body) [recD] ]
     return lensDec
 
