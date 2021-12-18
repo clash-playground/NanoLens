@@ -2,24 +2,18 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module NanoLens.Lens where
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.State
 import Data.Coerce
 import Data.Eq
 import Data.Functor
 import Data.Functor.Identity
 import Data.Functor.Const
 import Data.Function
-import Data.List
-import GHC.Int
-
-import Language.Haskell.TH
-import Language.Haskell.TH.Syntax
-import Language.Haskell.TH.Lib
 
 
 
@@ -73,55 +67,50 @@ type Concave s t a b = (a -> Identity b) -> s -> Identity t
 over :: Concave s t a b -> (a -> b) -> s -> t
 over = coerce
 
+-- | Alias for 'over'.
+--
+(%~) :: Concave s t a b -> (a -> b) -> s -> t
+(%~) = over
+
+-- | Set a value under a lens.
+--
+-- See 'Lens' for details.
+--
 set :: Concave s t a b -> b -> s -> t
 set l b = runIdentity #. l (\_ -> Identity b)
+
+-- | Alias for 'set'.
+--
+(.~) :: Concave s t a b -> b -> s -> t
+(.~) = set
+
+
+-- | Endomorphic lenses.
+--
+-- A lens over a field that doesn't change the record's type is an
+-- endomorphism on the record type.
+--
+type Lens' s a = Lens s s a a
+
+-- | Monadic alias for 'view'.
+--
+use :: MonadState s m => Convex a s a -> m a
+use l = view l <$> get
+
+-- | Monadic alias for 'over'.
+--
+(%=) :: MonadState s m => Concave s s a b -> (a -> b) -> m ()
+l %= f = modify (l %~ f)
 
 
 -- | Compose with a coercion.
 --
 (#.) :: Coercible c b => (b -> c) -> (a -> b) -> (a -> c)
-(#.) _ =
-    coerce (\x -> x :: g) :: forall f g. Coercible g f => f -> g
+(#.) _ = coerce (\x -> x :: g)
+    :: forall f g. Coercible g f => f -> g
     -- ^ Given that @Coercible c b@ implies @Coercible (a -> c) (a -> b)@,
     -- @(#.) q p@ becomes just a coercion on @id p@.
 
 (.#) :: Coercible c b => (a -> b) -> (b -> c) -> (a -> c)
 (.#) p _ = coerce p
-
-
--- | Automatically generate a lens for a numbered field in a record.
---
-genNumberedLens :: Name -> Con -> Int -> Q Dec
-genNumberedLens lensName con nr = do
-    let (conName, fields) = case con of
-            RecC nm fs -> (nm, fs)
-        fieldNames = map (\(nm, _, _) -> nm) fields
-        fieldName  = fieldNames !! nr
-
-    kName <- newName "k"
-    sName <- newName "s"
-    xName <- newName "x"
-    yName <- newName "y"
-    let kP = varP kName
-        sP = varP sName
-        sE = varE sName
-
-        argsP = [ kP, sP ]
-
-        fieldP = [ if nr == n then varP xName else wildP
-                 | (n, _) <- zip [0..] fields ]
-        recP = conP conName fieldP
-        recD = valD recP (normalB sE) []
-
-    let k = varE kName
-        x = varE xName
-        y = varP yName
-
-        upd1 = (,) fieldName <$> varE yName
-        upd  = recUpdE sE [upd1]
-        body = [| $k $x <&> \ $y -> $upd |]
-
-    lensDec <- funD lensName
-        [ clause argsP (normalB body) [recD] ]
-    return lensDec
 
