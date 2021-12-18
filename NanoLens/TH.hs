@@ -8,6 +8,7 @@ module NanoLens.TH where
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State
+import Data.Eq
 import Data.Functor
 import Data.Functor.Identity
 import Data.Functor.Const
