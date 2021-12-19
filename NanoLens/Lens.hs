@@ -108,7 +108,9 @@ l %= f = modify (l %~ f)
 (#.) :: Coercible c b => (b -> c) -> (a -> b) -> (a -> c)
 (#.) _ = coerce (\x -> x :: g)
     :: forall f g. Coercible g f => f -> g
-    -- ^ Given that @Coercible c b@ implies @Coercible (a -> c) (a -> b)@,
+    -- ^ Given
+    --  >>> Coercible c b
+    --  >>>   => Coercible (a -> c) (a -> b)
     -- @(#.) q p@ becomes just a coercion on @id p@.
 
 (.#) :: Coercible c b => (a -> b) -> (b -> c) -> (a -> c)
