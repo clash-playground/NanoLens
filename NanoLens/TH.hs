@@ -14,8 +14,8 @@ import Data.Functor
 import Data.Functor.Identity
 import Data.Functor.Const
 import Data.Function
-import Data.Maybe
 import Data.List
+import Data.Maybe
 import GHC.Int
 import Text.Show
 
@@ -85,9 +85,10 @@ genNumberedLens con nr lensName = do
         recP    = conP conName fieldP
         openD   = valD recP (normalB $ varE sName) []
 
-        fieldE  = mkFieldWith varE 0 yName vNames
+    closeName <- newName "close"
+    let fieldE  = mkFieldWith varE 0 yName vNames
         closeE  = foldl appE (conE conName) fieldE
-        closeD  = funD (mkName "closeLens")
+        closeD  = funD closeName
             [ clause [ varP yName ] (normalB closeE) [] ]
     -- ^>>> where
     --  >>>   Rec v1 v2 ... x ... vn
@@ -95,7 +96,7 @@ genNumberedLens con nr lensName = do
 
     let k       = varE kName
         x       = varE xName
-        close   = varE $ mkName "closeLens"
+        close   = varE closeName
         body = [| $k $x <&> $close |]
 
     lensDec <- funD lensName
