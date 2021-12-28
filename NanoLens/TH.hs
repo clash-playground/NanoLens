@@ -69,29 +69,37 @@ genNumberedLens con nr lensName = do
 
     kName <- newName "k"
     sName <- newName "s"
-    xName <- newName "x"
-    yName <- newName "y"
-    let kP = varP kName
-        sP = varP sName
-        sE = varE sName
+    let lensParams = [ varP kName, varP sName ]
+    -- ^>>> lens k s =
 
-        argsP = [ kP, sP ]
+    xName   <- newName "x"
+    yName   <- newName "y"
+    vNames  <- newNames "v" (length fields - 1)
+    let mkFieldWith f n x vs
+          | n == nr     = f x : mkFieldWith f (n + 1) x vs
+          | otherwise   = case vs of
+            v:vs' -> f v : mkFieldWith f (n + 1) x vs'
+            []    -> []
 
-        fieldP = [ if nr == n then varP xName else wildP
-                 | (n, _) <- zip [0..] fields ]
-        recP = conP conName fieldP
-        recD = valD recP (normalB sE) []
+        fieldP  = mkFieldWith varP 0 xName vNames
+        recP    = conP conName fieldP
+        openD   = valD recP (normalB $ varE sName) []
 
-    let k = varE kName
-        x = varE xName
-        y = varP yName
+        fieldE  = mkFieldWith varE 0 yName vNames
+        closeE  = foldl appE (conE conName) fieldE
+        closeD  = funD (mkName "closeLens")
+            [ clause [ varP yName ] (normalB closeE) [] ]
+    -- ^>>> where
+    --  >>>   Rec v1 v2 ... x ... vn
+    --  >>>   close y = Rec v1 v2 ... y ... vn
 
-        upd1 = (,) fieldName <$> varE yName
-        upd  = recUpdE sE [upd1]
-        body = [| $k $x <&> \ $y -> $upd |]
+    let k       = varE kName
+        x       = varE xName
+        close   = varE $ mkName "closeLens"
+        body = [| $k $x <&> $close |]
 
     lensDec <- funD lensName
-        [ clause argsP (normalB body) [recD] ]
+        [ clause lensParams (normalB body) [openD, closeD] ]
     return lensDec
 
 -- | Generate a lens with supplemental equipment.
@@ -110,7 +118,6 @@ genLensSupplemental rules con s nr (fieldName, _, fieldTy) = do
     fieldClassD <- maybeGenFieldClass
     sequence $ lensInstanceD : fieldClassD
   where
-    maybeGenFieldClass :: Q [Q Dec]
     maybeGenFieldClass
       | generateClasses rules = do
         classExists <- isJust <$> lookupTypeName (show className)
@@ -149,9 +156,10 @@ genFieldClass className lensName = do
         aTyVar  = PlainTV a
         aTy     = VarT a
 
-    classD (cxt []) className [sTyVar, aTyVar] []
-        $ sigD lensName (return $ ''Lens' `conAppsT` [sTy, aTy])
-        : []
+        methodTy = ''Lens' `conAppsT` [sTy, aTy]
+
+    classD (cxt []) className [sTyVar, aTyVar] [FunDep [s] [a]]
+        [ sigD lensName (return methodTy) ]
 
 -- | Generate the instance corresponding to a field type class.
 --
@@ -195,5 +203,9 @@ classyRules = Rules
 conAppsT :: Name -> [Type] -> Type
 conAppsT nm = foldl AppT (ConT nm)
 
-
+-- | Create a list of @n@ names.
+--
+newNames :: String -> Int -> Q [Name]
+newNames base n =
+    sequence [ newName (base ++ show i) | i <- [1..n] ]
 
