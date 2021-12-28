@@ -14,8 +14,8 @@ import Data.Functor
 import Data.Functor.Identity
 import Data.Functor.Const
 import Data.Function
-import Data.Maybe
 import Data.List
+import Data.Maybe
 import GHC.Int
 import Text.Show
 
@@ -34,10 +34,7 @@ nanolensify :: Rules -> Name -> Q [Dec]
 nanolensify rules tyName = do
     (con, tyVars) <- reifyConAndStuff
 
-    let tyArgs = map tyVarToVar tyVars where
-            tyVarToVar (PlainTV nm)     = VarT nm
-            tyVarToVar (KindedTV nm _)  = VarT nm
-        ty = tyName `conAppsT` tyArgs
+    let ty = tyName `conAppsT` (tyVarsToVars tyVars)
 
         fields = case con of
             RecC nm fs -> fs
@@ -47,6 +44,10 @@ nanolensify rules tyName = do
     genLens con ty   = genLensSupplemental rules con ty
     genZipper con ty = zipWith (genLens con ty) [0..]
 
+    tyVarsToVars = map tyVarToVar where
+        tyVarToVar (PlainTV nm)     = VarT nm
+        tyVarToVar (KindedTV nm _)  = VarT nm
+    
     reifyConAndStuff = do
         TyConI tyDec <- reify tyName
         return $ case tyDec of
@@ -82,12 +83,13 @@ genNumberedLens con nr lensName = do
             []    -> []
 
         fieldP  = mkFieldWith varP 0 xName vNames
-        recP    = conP conName fieldP
-        openD   = valD recP (normalB $ varE sName) []
+        openP   = conP conName fieldP
+        openD   = valD openP (normalB $ varE sName) []
 
-        fieldE  = mkFieldWith varE 0 yName vNames
+    closeName <- newName "close"
+    let fieldE  = mkFieldWith varE 0 yName vNames
         closeE  = foldl appE (conE conName) fieldE
-        closeD  = funD (mkName "closeLens")
+        closeD  = funD closeName
             [ clause [ varP yName ] (normalB closeE) [] ]
     -- ^>>> where
     --  >>>   Rec v1 v2 ... x ... vn
@@ -95,7 +97,7 @@ genNumberedLens con nr lensName = do
 
     let k       = varE kName
         x       = varE xName
-        close   = varE $ mkName "closeLens"
+        close   = varE closeName
         body = [| $k $x <&> $close |]
 
     lensDec <- funD lensName
