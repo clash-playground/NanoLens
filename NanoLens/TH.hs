@@ -65,8 +65,6 @@ genNumberedLens :: Con -> Int -> Name -> Q Dec
 genNumberedLens con nr lensName = do
     let (conName, fields) = case con of
             RecC nm fs -> (nm, fs)
-        fieldNames = map (\(nm, _, _) -> nm) fields
-        fieldName  = fieldNames !! nr
 
     kName <- newName "k"
     sName <- newName "s"
