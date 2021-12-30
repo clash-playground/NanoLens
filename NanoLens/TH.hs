@@ -74,18 +74,19 @@ genNumberedLens con nr lensName = do
     xName   <- newName "x"
     yName   <- newName "y"
     vNames  <- newNames "v" (length fields - 1)
-    let mkFieldWith f n x vs
-          | n == nr     = f x : mkFieldWith f (n + 1) x vs
+    let arrangeFields n u vs
+          | n == nr     = u : arrangeFields (n + 1) u vs
           | otherwise   = case vs of
-            v:vs' -> f v : mkFieldWith f (n + 1) x vs'
+            v:vs' -> v : arrangeFields (n + 1) u vs'
             []    -> []
+        arrangeWith f u = map f $ arrangeFields 0 u vNames
 
-        fieldP  = mkFieldWith varP 0 xName vNames
+        fieldP  = arrangeWith varP xName
         openP   = conP conName fieldP
         openD   = valD openP (normalB $ varE sName) []
 
     closeName <- newName "close"
-    let fieldE  = mkFieldWith varE 0 yName vNames
+    let fieldE  = arrangeWith varE yName
         closeE  = foldl appE (conE conName) fieldE
         closeD  = funD closeName
             [ clause [ varP yName ] (normalB closeE) [] ]
