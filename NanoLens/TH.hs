@@ -43,11 +43,7 @@ nanolensify rules tyName = do
   where
     genLens con ty   = genLensSupplemental rules con ty
     genZipper con ty = zipWith (genLens con ty) [0..]
-
-    tyVarsToVars = map tyVarToVar where
-        tyVarToVar (PlainTV nm)     = VarT nm
-        tyVarToVar (KindedTV nm _)  = VarT nm
-    
+   
     reifyConAndStuff = do
         TyConI tyDec <- reify tyName
         let (cons, tyVars) = case tyDec of
@@ -57,6 +53,10 @@ nanolensify rules tyName = do
             []    -> fail "cannot derive empty lenses"
             _     -> fail "cannot derive sum-type lenses"
 
+    tyVarsToVars = map tyVarToVar where
+        tyVarToVar (PlainTV nm)     = VarT nm
+        tyVarToVar (KindedTV nm _)  = VarT nm
+ 
 genSimpleLenses :: Name -> Q [Dec]
 genSimpleLenses = nanolensify simpleRules
 
