@@ -53,9 +53,15 @@ nanolensify rules tyName = do
         let (cons, tyVars) = case tyDec of
                 DataD _ _ tyVars _ cons _ -> (cons, tyVars)
         case cons of
+<<<<<<< HEAD
             [con] -> return (con, tyVars)
             []    -> fail "cannot derive empty lenses"
             _     -> fail "cannot derive sum-type lenses"
+=======
+            [con]   -> return (con, tyVars)
+            []      -> fail "cannot derive empty lenses"
+            _       -> fail "cannot derive sum-type lenses"
+>>>>>>> 650787a7fd940c0f3b6ec49ad787e5282a9f3030
 
 genSimpleLenses :: Name -> Q [Dec]
 genSimpleLenses = nanolensify simpleRules
